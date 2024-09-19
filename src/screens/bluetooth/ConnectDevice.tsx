@@ -45,9 +45,10 @@ const ConnectDevice = () => {
   useEffect(() => {
     BleManager.enableBluetooth()
       .then(() => {
-        // requestPermission();
+        // startScanning()
+        requestPermission()
         // Success code
-        console.log("The bluetooth is already enabled or the user confirm");
+        console.log("The bluetooth is already enabled or the user confirm")
       })
       .catch((error) => {
         // Failure code
@@ -95,9 +96,9 @@ const ConnectDevice = () => {
     };
   }, []);
 
-  useEffect(() => {
-    startScanning();
-  }, []);
+  // useEffect(() => {
+  //   startScanning();
+  // }, []);
 
   const requestPermission = async () => {
     const granted = await PermissionsAndroid.requestMultiple([
@@ -105,7 +106,7 @@ const ConnectDevice = () => {
       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
       PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      // PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
       // PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
     ]);
     console.log("granted", granted);
@@ -117,7 +118,7 @@ const ConnectDevice = () => {
 
   const startScanning = () => {
     if (!isScanning) {
-      BleManager.scan([], 10, false)
+      BleManager.scan([], 10, true)
         .then(() => {
           console.log("scan started");
           setScanning(true);
@@ -181,25 +182,9 @@ const ConnectDevice = () => {
 
   const isDeviceConnected = async (deviceId: string) => {
     const deviceCOnnected = await BleManager.isPeripheralConnected(deviceId);
-    // console.log('deviceCOnnected', deviceCOnnected)
+    console.log('deviceCOnnected', deviceCOnnected)
     return await BleManager.isPeripheralConnected(deviceId);
   };
-
-  // const onConnect = async (item) => {
-  //   console.log('onConnect', item)
-  //   try {
-  //     await BleManager.connect(item.id);
-  //     setCurrentDevice(item);
-
-  //     const result = await BleManager.retrieveServices(item.id);
-  //     // console.log("onConnect result", result);
-  //     // console.log("services", result?.services);
-  //     // console.log("characterstics", result?.characteristics);
-  //     onServiceDiscovered(result, item);
-  //   } catch (error) {
-  //     console.log("onConnect error", error);
-  //   }
-  // };
 
   function addListener(peripheral, service, characteristic) {
     return new Promise(async (resolve, reject) => {
@@ -236,54 +221,6 @@ const ConnectDevice = () => {
       );
     });
   }
-
-  const onServiceDiscovered = (result, item) => {
-    const services = result.services;
-    // console.log('services', services)
-    const characterstics = result.characteristics;
-    console.log("characterstics", JSON.stringify(characterstics));
-    services.forEach((service) => {
-      // console.log('fserviceirst', service)
-      const serviceUUID = service.uuid;
-
-      onChangeCharacterstics(serviceUUID, characterstics, item);
-    });
-  };
-
-  const onChangeCharacterstics = (serviceUUID, characterstics, item) => {
-    // console.log('onChangeCharacterstics',JSON.stringify( characterstics ))
-    characterstics?.forEach((characterstic) => {
-      const characteristicsUDID = characterstic.characteristic;
-      // console.log('characteristicsUDID', characteristicsUDID)
-      const serviceUUID__ = characterstic.service;
-      // console.log('serviceUUID__', serviceUUID__)
-      //   if (characteristicsUDID === "00002a01-0000-1000-8000-00805f9b34fb") {
-      //     readCharacteristic(characteristicsUDID, serviceUUID, item)
-      // }
-
-      if (characteristicsUDID?.includes === "2a01") {
-        readCharacteristic(characteristicsUDID, serviceUUID, item);
-      }
-
-      // if(characteristicsUDID==="00002a19-0000-1000-8000-00805f9b34fb")
-      // {
-      //   const serviceUUID__ = characterstic.service;
-      //   // console.log('characteristicsUDID', characteristicsUDID)
-
-      //   if (characteristicsUDID) {
-      //     BleManager.startNotification(
-      //       item.id,
-      //       serviceUUID__,
-      //       characteristicsUDID
-      //     ).then(() => {
-      //       console.log("notification started");
-      //     }).catch(error =>{
-      //       console.log('notification error', error)
-      //     });
-      //   }
-      // }
-    });
-  };
 
   const readCharacteristic = (
     characteristicUUID: any,
@@ -324,7 +261,7 @@ const ConnectDevice = () => {
             {
               currentDevice === item?.id
                 ? onDisconnect(item)
-                : await connect(item);
+                :  connect(item);
             }
           }
         >
@@ -367,29 +304,21 @@ const ConnectDevice = () => {
       let failedToConnectTimer: NodeJS.Timeout;
 
       //For android always ensure to enable the bluetooth again before connecting.
-      const isEnabled = await enableBluetooth();
+      const isEnabled = await enableBluetooth()
 
       if (!isEnabled) {
         //if blutooth is somehow off, first prompt user to turn on the bluetooth
         return resolve(false);
       }
 
+      await BleManager.connect(deviceId).then((deviceconnect) => {
+        console.log('deviceconnect', deviceconnect)
+        //if connected successfully, stop the previous set timer.
+        // clearTimeout(failedToConnectTimer);
+      }).catch(error => console.log('connect error', error));
+
       //before connecting, ensure if app is already connected to device or not.
       let isConnected = await isDeviceConnected(deviceId);
-
-      if (!isConnected) {
-        //if not connected already, set the timer such that after some time connection process automatically stops if its failed to connect.
-        failedToConnectTimer = setTimeout(() => {
-          return resolve(false);
-        }, MAX_CONNECT_WAITING_PERIOD);
-
-        await BleManager.connect(deviceId).then((deviceconnect) => {
-          console.log('deviceconnect', deviceconnect)
-          //if connected successfully, stop the previous set timer.
-          clearTimeout(failedToConnectTimer);
-        });
-        // isConnected = await isConnected(deviceId);
-      }
 
       if (!isConnected) {
         //now if its not connected somehow, just close the process.
@@ -435,17 +364,17 @@ const ConnectDevice = () => {
         await BleManager.startNotification(
           deviceId,
           // serviceReadinIdentifier,
-          // "180F",
-          "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+          "18D0",
+          // "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
           // charNotificationIdentifier
-          // "2A19"
-          "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+          "2D00"
+          // "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
         )
           .then(async (response) => {
             console.log("Started notification successfully on ");
             // await BleManager.read(deviceId, "fefc0002-5251-4a6d-9703-71bbfdc60", "2A19").then((response)=>{
             //   console.log('read notification response',JSON.stringify( response))
-            //   extractDeviceName(response);
+              // extractDeviceName(response);
 
             // }).catch(error =>{
             //   console.log('read notification error', error)
@@ -453,14 +382,17 @@ const ConnectDevice = () => {
 
             await BleManager.read(
               deviceId,
-              "fefc0002-5251-4a6d-9703-71bbfdc60f0b",
-              "fefc2a19-5251-4a6d-9703-71bbfdc60f0b"
+              // "fefc0002-5251-4a6d-9703-71bbfdc60f0b",
+              '1800',
+              // "fefc2a19-5251-4a6d-9703-71bbfdc60f0b"
+              "2A00"
             )
               .then(async (response: any) => {
                 console.log(
                   "read notification response",
                   JSON.stringify(response)
                 );
+                // extractDeviceName(response)
                 const batteryLevel = Buffer.from(response, "base64").readUInt8(
                   0
                 );
@@ -470,32 +402,6 @@ const ConnectDevice = () => {
                 console.log('buffer1', buffer1.toJSON().data)
 
                 let serviceUdid = ''
-
-//                 const data = "12300000"; // Replace with your actual string
-// const encoder = new TextEncoder();
-// const byteArray = encoder.encode(data);
-
-// const base64Data = Buffer.from(byteArray).toString('base64');           
-
-// // Decode Base64 string into a Uint8Array
-// const uint8Array = Buffer.from(base64Data, 'base64');
-
-// // Convert Uint8Array to a number array (if needed)
-// const numberArray = Array.from(uint8Array);
-// console.log('numberArray', numberArray)
-
-                  // try {
-                  //   const response = await BleManager.write(
-                  //     deviceId,
-                  //     'fefc0002-5251-4a6d-9703-71bbfdc60f0b',
-                  //     'fefc0003-5251-4a6d-9703-71bbfdc60f0b',
-                  //     Buffer.from('123').toJSON().data
-                  //   )
-
-                  //   console.log('response write mastercode', response)
-                  // } catch (error) {
-                  //   console.log('write mastercode error', error)
-                  // }
 
                 try {
                   peripheralInformation?.characteristics?.map((value)=>{
@@ -518,24 +424,8 @@ const ConnectDevice = () => {
                   console.log('Second: Write failed');
                   console.log("BleManager.write error:", error);
                 }
-                
 
-                // await BleManager.write(
-                //   deviceId,
-                //   "fefc0002-5251-4a6d-9703-71bbfdc60f0b",
-                //   "fefc2a19-5251-4a6d-9703-71bbfdc60f0b",
-                //   buffer1.toJSON().data
-                // )
-                //   .then((res) => {
-                //     console.log('first')
-                //     console.log("BleManager.write", res);
-                //   })
-                //   .catch((err) => {
-                //     console.log('secondd')
-                //     console.log("BleManager.write", err);
-                //   });
-
-                // extractDeviceName(response);
+                extractDeviceName(response);
               })
               .catch((error) => {
                 console.log("read notification error", error);
