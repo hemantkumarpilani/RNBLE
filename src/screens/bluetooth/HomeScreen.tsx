@@ -100,7 +100,7 @@ const HomeScreen = () => {
 
   const scanQRCode = () => {
     console.log("scanQRCode", data);
-    if (data != "") {
+    if (deviceConnection) {
       navigate("Renter");
     } else {
       setOpenCamera(true);
@@ -153,28 +153,19 @@ const HomeScreen = () => {
     },
   });
 
-  const swipeToDelete = () => {
-    const panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {},
-      onPanResponderRelease: (_, gestureState) => {
-        console.log("onPanResponderRelease");
-        if (gestureState.dx < -50) {
-          // dispatch(DeviceDetailsSlice(""));
-        }
-      },
-    });
-  };
-
-  const rightSwipe = () => {
-    return (
-      <View style={{}}>
-        <Text>Delete</Text>
-      </View>
-    );
-  };
-
+  // const swipeToDelete = () => {
+  //   const panResponder = PanResponder.create({
+  //     onStartShouldSetPanResponder: () => true,
+  //     onMoveShouldSetPanResponder: () => true,
+  //     onPanResponderMove: (_, gestureState) => {},
+  //     onPanResponderRelease: (_, gestureState) => {
+  //       console.log("onPanResponderRelease");
+  //       if (gestureState.dx < -50) {
+  //         // dispatch(DeviceDetailsSlice(""));
+  //       }
+  //     },
+  //   });
+  // };
   return (
     <>
       {openCamera ? (
@@ -222,71 +213,79 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* <View  {...panResponder.panHandlers} style={{ borderWidth: 1 }}> */}
-          <View style={{borderWidth:1, flexDirection:'row'}}  {...panResponder.panHandlers} >
-          <TouchableOpacity
-            style={styles.container}
-            onPress={() => navigate("Renter")}
-            // activeOpacity={1}
-            // {...panResponder.panHandlers}
+          {/* <View  {...panResponder.panHandlers} style={{ borderWidth: 1 }}>  {...panResponder.panHandlers}  */}
+          <View
+            style={{ flexDirection: "row" }}
+            {...panResponder.panHandlers}
+            pointerEvents="box-none"  
           >
-            <View style={styles.bluetoothContainer}>
-              <Bluetooth name={"bluetooth"} color={Colors.black} size={43} />
-              <View>
-                <Text style={styles.nameText}>{cupNmae}</Text>
-                <Text style={styles.deviceId}>{data}</Text>
-              </View>
+            <TouchableOpacity
+              // onStartShouldSetResponder={() => true}
+              style={styles.container}
+              onPressIn={(e) => {
+                e.persist();
+                e.stopPropagation(); // Ensure no conflict with outer pan responder
+              }}          
+              onPress={() => navigate("Renter")}
+              // activeOpacity={1}
+              // {...panResponder.panHandlers}
+            >
+              <View style={styles.bluetoothContainer}>
+                <Bluetooth name={"bluetooth"} color={Colors.black} size={43} />
+                <View>
+                  <Text style={styles.nameText}>{cupNmae}</Text>
+                  <Text style={styles.deviceId}>{data}</Text>
+                </View>
 
-              {/* {deviceConnection && (
-                 
-                    <CustomButton
-                      text={"Disconnect"}
-                      textColor={Colors.white}
-                      backgroundColor={Colors.black}
-                      onPress={buttonPress}
-                      style={{ paddingHorizontal: 10, left: 100 }}
-                    />
-                )} */}
+                {deviceConnection && (
+                  <CustomButton
+                    text={"Disconnect"}
+                    textColor={Colors.white}
+                    backgroundColor={Colors.black}
+                    // onPress={buttonPress}
+                    onPress={(e) => {
+                      e.stopPropagation(); // Prevent parent onPress from firing
+                      buttonPress();
+                    }}
+                    style={{ paddingHorizontal: 10, left: 100 }}
+                  />
+                )}
 
-              <CustomButton
+                {/* <CustomButton
                 text={"Disconnect"}
                 textColor={Colors.white}
                 backgroundColor={Colors.black}
                 onPress={buttonPress}
                 style={{ paddingHorizontal: 10, left: 100 }}
-              />
-               
-            </View>
-            <View style={{borderWidth:1, flexDirection:"row"}}>
-            {deviceConnection ? (
-                <View style={styles.container1}>
-                  <View style={styles.batteryContainer1}>
-                    <View
-                      style={[
-                        styles.batteryFill,
-                        {
-                          width: batteryLevel, 
-                          backgroundColor: Colors.green,
-                        },
-                      ]}
-                    />
+              /> */}
+              </View>
+              <View style={{ flexDirection: "row", marginTop: 10 }}>
+                {deviceConnection ? (
+                  <View style={styles.container1}>
+                    <View style={styles.batteryContainer1}>
+                      <View
+                        style={[
+                          styles.batteryFill,
+                          {
+                            width: batteryLevel,
+                            backgroundColor: Colors.green,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.batteryCap} />
                   </View>
-                  <View style={styles.batteryCap} />
-                </View>
-              ) : (
-                <Battery
-                  name={"battery"}
-                  style={styles.battery}
-                  size={RFValue(25)}
-                />
-              )}
-            <Text style={styles.serialText}>Serial Key {serialkey}</Text>
-            
-            </View>
-           
-           
-          </TouchableOpacity>
-           <View style={styles.rowContainer}>
+                ) : (
+                  <Battery
+                    name={"battery"}
+                    style={styles.battery}
+                    size={RFValue(25)}
+                  />
+                )}
+                <Text style={styles.serialText}>Serial Key {serialkey}</Text>
+              </View>
+            </TouchableOpacity>
+            <View style={styles.rowContainer}>
               {/* {deviceConnection ? (
                 <View style={styles.container1}>
                   <View style={styles.batteryContainer1}>
@@ -325,7 +324,7 @@ const HomeScreen = () => {
               </Text>
             </View>
           </View>
-        
+
           {/* </View> */}
 
           <TouchableOpacity style={styles.footerContainer} onPress={scanQRCode}>
@@ -417,9 +416,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   container: {
-    borderWidth:1,
     paddingHorizontal: 10,
-    width:'60%'
+    width: "60%",
   },
   bluetoothContainer: {
     flexDirection: "row",
@@ -448,13 +446,13 @@ const styles = StyleSheet.create({
     textAlignVertical: "center",
     fontFamily: FONTS.WsSemiBoldItallic,
     fontSize: RFValue(15),
-    left: 10,
+    left: 15,
   },
   issuedText: {
     textAlignVertical: "center",
-    alignSelf:"center",
-    marginLeft:50,
-    marginTop:40,
+    alignSelf: "center",
+    marginLeft: 50,
+    marginTop: 40,
     // left: 35,
     fontFamily: FONTS.WsSemiBoldItallic,
     // color: Colors.black,
@@ -476,7 +474,8 @@ const styles = StyleSheet.create({
   container1: {
     flexDirection: "row",
     alignItems: "center",
-    right: 30,
+    left: 3,
+    // right: 30,
   },
   batteryContainer1: {
     width: 40, // Width of the battery container
